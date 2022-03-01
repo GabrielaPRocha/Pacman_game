@@ -1,3 +1,4 @@
+import random
 import pygame
 from abc import ABCMeta, abstractmethod
 
@@ -77,21 +78,7 @@ class Cenario(ElementoJogo):
         img_pontos = fonte.render("Score: {}".format(self.pontos), True, AMARELO)
         tela.blit(img_pontos, (pontos_x, 50))
 
-    def get_direcoes(self, linha, coluna):
-        direcoes = []
-        if self.matriz[int(linha - 1)][int(coluna)] != 2:
-            direcoes.append(ACIMA)
-        if self.matriz[int(linha + 1)][int(coluna)] != 2:
-            direcoes.append(ABAIXO)
-        if self.matriz[int(linha)][int(coluna) - 1] != 2:
-            direcoes.append(ESQUERDA)
-        if self.matriz[int(linha)][int(coluna + 1)] != 2:
-            direcoes.append(DIREITA)
-
-        return direcoes
-
     def pintar_linha(self, tela, numero_linha, linha):
-
         for numero_coluna, coluna in enumerate(linha):
             x = numero_coluna * self.tamanho
             y = numero_linha * self.tamanho
@@ -108,9 +95,22 @@ class Cenario(ElementoJogo):
             self.pintar_linha(tela, numero_linha, linha)
         self.pintar_pontos(tela)
 
+    def get_direcoes(self, linha, coluna):
+        direcoes = []
+        if self.matriz[int(linha - 1)][int(coluna)] != 2:
+            direcoes.append(ACIMA)
+        if self.matriz[int(linha + 1)][int(coluna)] != 2:
+            direcoes.append(ABAIXO)
+        if self.matriz[int(linha)][int(coluna) - 1] != 2:
+            direcoes.append(ESQUERDA)
+        if self.matriz[int(linha)][int(coluna + 1)] != 2:
+            direcoes.append(DIREITA)
+        return direcoes
+
     def calcular_regras(self):
         direcoes = self.get_direcoes(self.fantasma.linha, self.fantasma.coluna)
-        print(direcoes)
+        if len(direcoes) >= 3:
+            self.fantasma.esquina(direcoes)
         col = self.pacman.coluna_intecao
         lin = self.pacman.linha_intecao
         if 0 <= col < 28 and 0 <= lin < 29:
@@ -119,12 +119,17 @@ class Cenario(ElementoJogo):
                 if self.matriz[lin][col] == 1:
                     self.pontos += 1
                     self.matriz[lin][col] = 0
+        col = int(self.fantasma.coluna_intecao)
+        lin = int(self.fantasma.linha_intecao)
+        if 0 <= col < 28 and  0 <= lin < 29 and self.matriz[lin][col] !=2:
+            self.fantasma.aceitar_movimento()
+        else:
+            self.fantasma.recusar_movimento(direcoes)
 
     def processar_eventos(self, evts):
         for e in evts:
             if e.type == pygame.QUIT:
                 exit()
-
 
 class Pacman(ElementoJogo):
     def __init__(self, tamanho):
@@ -197,7 +202,11 @@ class Pacman(ElementoJogo):
 class Fantasma(ElementoJogo):
     def __init__(self, cor, tamanho):
         self.coluna = 6.0
-        self.linha = 8.0
+        self.linha = 2.0
+        self.linha_intecao = self.linha
+        self.coluna_intecao = self.coluna
+        self.velocidade = 1
+        self.direcao = 0
         self.tamanho = tamanho
         self.cor = cor
 
@@ -230,7 +239,29 @@ class Fantasma(ElementoJogo):
         pygame.draw.circle(tela, PRETO, (olho_d_x, olho_d_y), olho_raio_int, 0)
 
     def calcular_regras(self):
-        pass
+        if self.direcao == ACIMA:
+            self.linha_intecao -= self.velocidade
+        elif self.direcao == ABAIXO:
+            self.linha_intecao += self.velocidade
+        elif self.direcao == ESQUERDA:
+            self.coluna_intecao += self.velocidade
+        elif self.direcao == DIREITA:
+            self.coluna_intecao -= self.velocidade
+
+    def mudar_direcao(self, direcoes):
+        self.direcao = random.choice(direcoes)
+
+    def esquina(self, direcoes):
+        self.mudar_direcao(direcoes)
+
+    def aceitar_movimento(self):
+        self.linha = self.linha_intecao
+        self.coluna = self.coluna_intecao
+
+    def recusar_movimento(self, direcoes):
+        self.linha_intecao = self.linha
+        self.coluna_intecao = self.coluna
+        self.mudar_direcao(direcoes)
 
     def processar_eventos(self, evts):
         pass
@@ -246,6 +277,7 @@ if __name__ == "__main__":
     while True:
         # CALCULAR AS REGRAS
         pacman.calcular_regras()
+        blinky.pintar(screen)
         cenario.calcular_regras()
 
         # PINTAR A TELA
